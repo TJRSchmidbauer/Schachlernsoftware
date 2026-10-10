@@ -1,0 +1,90 @@
+name: Quality checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  validate:
+    name: Tests, TypeScript, build and security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Prepare reports
+        run: mkdir -p reports
+
+      - name: Resolve lockfile and install dependencies
+        id: install
+        run: |
+          if [ ! -f package-lock.json ]; then
+            echo "Bootstrap: generating a lockfile. Review and commit the artifact separately." | tee reports/lockfile-status.txt
+            npm install --package-lock-only --ignore-scripts --no-fund --no-audit
+          else
+            echo "Using the committed lockfile." | tee reports/lockfile-status.txt
+          fi
+          npm ci --no-fund --no-audit 2>&1 | tee reports/install.log
+
+      - name: Unit tests with JUnit report
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run test -- --reporter=default --reporter=junit --outputFile=reports/vitest.xml 2>&1 | tee reports/tests.log
+
+      - name: TypeScript check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run typecheck 2>&1 | tee reports/typecheck.log
+
+      - name: Production static build
+        id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run build 2>&1 | tee reports/build.log
+
+      - name: Audit production dependency graph
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm audit --omit=dev --audit-level=high --json > reports/npm-audit.json
+
+      - name: Upload reports and resolved lockfile
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: quality-reports-${{ github.run_id }}
+          path: |
+            reports/
+            package.json
+            package-lock.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload static prototype build
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prototype-static-build-${{ github.run_id }}
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
