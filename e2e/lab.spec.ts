@@ -14,6 +14,12 @@ async function identifyScene(page: Page) {
   await square(page, 'd8').click();
   await button(page, 'Weiter').click();
 }
+async function unaidedScene(page: Page) {
+  await expect(page.locator('svg.arrows line')).toHaveCount(0);
+  await square(page, 'b7').click();
+  await square(page, 'd7').click();
+  await button(page, 'Weiter').click();
+}
 async function solve(page: Page, from: string, to: string, capture: string) {
   await square(page, from).click();
   await square(page, to).click();
@@ -32,6 +38,8 @@ test('komplette Lernrunde ohne Hilfe', async ({ page }) => {
   await expect(current(page)).toContainText('Selbst ziehen');
   await solve(page, 'e5', 'c6', 'd8');
   await button(page, 'Weiter').click();
+  await expect(current(page)).toContainText('Selbst erkennen');
+  await unaidedScene(page);
   await expect(current(page)).toContainText('Neu anwenden');
   await solve(page, 'e4', 'c5', 'd7');
   await button(page, 'Weiter').click();
@@ -46,6 +54,7 @@ test('Hilfe wird getrennt als Unterstützung ausgewiesen', async ({ page }) => {
   await expect(page.locator('.hint')).toContainText('König und Dame gleichzeitig');
   await solve(page, 'e5', 'c6', 'd8');
   await button(page, 'Weiter').click();
+  await unaidedScene(page);
   await solve(page, 'e4', 'c5', 'd7');
   await button(page, 'Weiter').click();
   await expect(page.locator('.results li').first()).toContainText('Mit Unterstützung gelöst');
@@ -56,6 +65,7 @@ test('Fehlzug zeigt Folge und wird zurückgenommen', async ({ page }) => {
   await watchScene(page); await identifyScene(page);
   await square(page, 'e5').click();
   await square(page, 'd7').click();
+  await expect(page.locator('.feedback')).toContainText('Schwarz antwortet gleich');
   await expect(page.locator('.feedback')).toContainText('Die Dame kann deinen Springer schlagen');
   await button(page, 'Zurücknehmen').click();
   await expect(square(page, 'e5')).toContainText('e5');

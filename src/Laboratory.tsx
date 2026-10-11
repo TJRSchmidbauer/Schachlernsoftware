@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Chess, type Square } from 'chess.js';
+import { scenes } from './lessons';
 import Board, { type Arrow } from './Board';
-import { attempt, chooseTarget, complete, isSolve, kindOf, lessonFor, next, restore, reveal, save, start, step, storageKey, titles, undo } from './engine';
+import { attempt, chooseTarget, playReply, complete, isSolve, kindOf, lessonFor, next, restore, reveal, save, start, step, storageKey, titles, undo } from './engine';
 
 export default function Laboratory() {
   const [state, setState] = useState(() => start());
@@ -19,12 +20,17 @@ export default function Laboratory() {
     try { localStorage.setItem(storageKey, save(state)); }
     catch { setStorageNotice('Dein Browser erlaubt keine Speicherung. Diese Runde bleibt nur bis zum Schließen erhalten.'); }
   }, [state, ready]);
+  useEffect(() => {
+    if (!state.pending) return;
+    const timer = setTimeout(() => setState(s => playReply(s)), 1400);
+    return () => clearTimeout(timer);
+  }, [state.pending]);
   const game = new Chess(state.fen);
   const lesson = lessonFor(state.scene);
   const interactive = ready && isSolve(state.scene) && state.cursor !== 1 && !complete(state) && !state.counterexample;
   const legal = selected && interactive ? game.moves({ square: selected as Square, verbose: true }).map(m => m.to) : [];
   const arrows: Arrow[] = [];
-  if ((kindOf(state.scene) === 'watch' && state.cursor === 1) || kindOf(state.scene) === 'identify' || (state.cursor === 1 && !state.counterexample))
+  if ((kindOf(state.scene) === 'watch' && state.cursor === 1) || (kindOf(state.scene) === 'identify' && scenes[state.scene].aided !== false) || (state.cursor === 1 && !state.counterexample))
     for (const to of lesson.targets) arrows.push({ from: lesson.landing, to, kind: 'attack' });
   if (state.hint >= 4 && state.cursor !== 1 && state.cursor < 3 && !state.counterexample) {
     const uci = lesson.line[state.cursor]; arrows.push({ from: uci.slice(0, 2), to: uci.slice(2, 4), kind: 'move' });

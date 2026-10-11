@@ -34,6 +34,8 @@ Dieser Plan ersetzt die grobe Roadmap nicht, sondern macht sie umsetzbar: Arbeit
 - 🟢 komplett.
 
 ## Phase B – Browser-Qualität (0.2b, ca. 2–3 Tage)
+**Status 11.10.2026:** B1 ✅ (Playwright: Desktop + Pixel 7 Touch; Lernrunde, Hilfe, Rücknahme, Reload, Zurücksetzen, gesperrter/kaputter Speicher, Tastatur; CI-Schritt) · B2 🟡 (axe WCAG A/AA ohne Befunde in zwei Szenen; manuelle Prüfung mit Screenreader und Schulgeräten offen) · B3 ✅ (neue Szene „Selbst erkennen“ ohne Pfeile vor der Transferaufgabe; Speicherformat v2 mit Migration von v1) · B4 ✅ (Antwort von Schwarz erscheint nach 1,4 s, Rücknahme bricht ab).
+
 **AP B1 – E2E-Tests (Playwright, Chromium vorinstalliert)**: Klick, Touch-Emulation, Tastatur, Reload, Hilfestufen 1–5, Rücknahme, localStorage gesperrt.
 - 🟢 Testfälle. 🟡 Playwright als devDependency (Empfehlung) statt Vitest-Browser-Mode.
 **AP B2 – Barrierefreiheit**: Kontraste (WCAG AA), Fokusreihenfolge, `aria-live` für Meldungen, Brett per Tastatur, Screenreader-Beschreibung der Stellung; axe-core im E2E.

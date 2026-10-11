@@ -6,7 +6,8 @@ Erster visueller Lernprototyp für Schule und AG, noch keine fertige Plattform.
 - Deutsche Oberfläche und eigene SVG-Figuren.
 - Entdecken → Ziele erkennen → selbst ziehen → neue Stellung → Auswertung.
 - Fünf Hilfestufen, Rücknahme, schrittweises Vormachen.
-- Zwei Gabel-Stellungen und je eine kuratierte Fehlzugfolge.
+- Zwei Gabel-Stellungen und je eine kuratierte Fehlzugfolge, deren Antwort zeitlich versetzt erscheint.
+- Erkennungsaufgabe einmal mit und einmal ohne Angriffspfeile.
 - Klick, Touch und Tastatur; Fortschritt nur im lokalen Browser.
 - Getrennte Ergebnisse mit/ohne Lösungshilfe; keine Rangliste und kein Zeitdruck.
 
@@ -15,6 +16,7 @@ Erster visueller Lernprototyp für Schule und AG, noch keine fertige Plattform.
 npm install
 npm run test
 npm run typecheck
+npm run test:e2e   # Browsertests (Chromium, Touch, Tastatur, axe)
 npm run dev
 ```
 http://127.0.0.1:3000 öffnen. Installation erzeugt eine Lockdatei, die nach erfolgreicher Prüfung separat aufgenommen werden soll. Installation, Tests, Typecheck und Build wurden in der Erstellungsumgebung nicht ausgeführt.

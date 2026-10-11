@@ -4,7 +4,7 @@ import { lessons, scenes, type Lesson, type SceneKind } from './lessons';
 export type Result = { id: string; assisted: boolean; attempts: number };
 export type State = {
   scene: number; cursor: number; fen: string; hint: number;
-  attempts: number; assisted: boolean; counterexample: boolean;
+  attempts: number; assisted: boolean; counterexample: boolean; pending: string | null;
   targets: string[]; results: Result[]; message: string;
 };
 export const titles = scenes.map(s => s.title);
@@ -26,9 +26,11 @@ export function position(scene: number, cursor: number) {
 }
 export function start(scene = 0, results: Result[] = []): State {
   return { scene, cursor: 0, fen: position(scene, 0), hint: 0, attempts: 0,
-    assisted: false, counterexample: false, targets: [], results,
+    assisted: false, counterexample: false, pending: null, targets: [], results,
     message: kindOf(scene) === 'watch' ? 'Beobachte: Ein Springer greift zwei Ziele an.' :
-      kindOf(scene) === 'identify' ? 'Tippe die beiden Figuren an, die der Springer angreift.' :
+      kindOf(scene) === 'identify' ? (scenes[scene].aided === false ?
+        'Diesmal ohne Pfeile: Tippe die beiden Figuren an, die der Springer angreift.' :
+        'Tippe die beiden Figuren an, die der Springer angreift.') :
       kindOf(scene) === 'summary' ? 'Du hast das Motiv in zwei Stellungen ausprobiert.' :
       'Greife König und Dame mit einem Springerzug gleichzeitig an.' };
 }
@@ -83,29 +85,39 @@ export function attempt(s: State, from: string, to: string): State {
         'Du hast die Dame gewonnen. Die Gabel hat funktioniert.' };
   }
   if (s.cursor === 0 && uci === lesson.counterexample[0]) {
-    moveUci(game, lesson.counterexample[1]);
-    return { ...s, fen: game.fen(), counterexample: true, attempts: s.attempts + 1,
-      message: 'Die Dame kann deinen Springer schlagen. Schau dir die Folge an und nimm den Versuch zurück.' };
+    return { ...s, fen: game.fen(), counterexample: true, pending: lesson.counterexample[1], attempts: s.attempts + 1,
+      message: 'Dein Springer steht jetzt dort. Schwarz antwortet gleich …' };
   }
   return { ...s, attempts: s.attempts + 1,
     message: 'Der Zug ist legal. Für diese Aufgabe suchen wir die Gabel auf König und Dame. Dein Versuch wurde zurückgenommen.' };
 }
+/** Spielt die zeitlich versetzte Antwort der Fehlzugfolge. */
+export function playReply(s: State): State {
+  if (!s.pending) return s;
+  const game = new Chess(s.fen);
+  moveUci(game, s.pending);
+  return { ...s, fen: game.fen(), pending: null,
+    message: 'Die Dame kann deinen Springer schlagen. Schau dir die Folge an und nimm den Versuch zurück.' };
+}
 export function undo(s: State): State {
   if (!isSolve(s.scene)) return s;
   const cursor = s.counterexample ? 0 : s.cursor === 2 ? 0 : Math.max(0, s.cursor - 1);
-  return { ...s, cursor, fen: position(s.scene, cursor), counterexample: false,
+  return { ...s, cursor, fen: position(s.scene, cursor), counterexample: false, pending: null,
     message: 'Zurückgenommen. Du kannst einen anderen Zug ausprobieren.' };
 }
 export const storageKey = 'schachlabor.gabel.v1';
-export const storageVersion = 1;
+export const storageVersion = 2;
+/** Version 1 hatte vier statt fünf Szenen vor der Zusammenfassung: Szene 3+ rückt um eins weiter. */
+const migrateScene = (scene: number, version: number) => version < 2 && scene >= 3 ? scene + 1 : scene;
 export function save(s: State): string {
   return JSON.stringify({ version: storageVersion, scene: s.scene, cursor: s.counterexample ? 0 : s.cursor,
     hint: s.hint, assisted: s.assisted, attempts: s.attempts, results: s.results });
 }
 export function restore(raw: string): State {
   const p = JSON.parse(raw);
+  const version = p && p.version === undefined ? 1 : p?.version;
   const integer = (x: unknown, max: number) => Number.isInteger(x) && Number(x) >= 0 && Number(x) <= max;
-  if (!p || (p.version !== undefined && p.version !== storageVersion) || !integer(p.scene, lastScene) || !integer(p.cursor, 3) || !integer(p.hint, 5) ||
+  if (!p || (version !== 1 && version !== storageVersion) || !integer(p.scene, version === 1 ? lastScene - 1 : lastScene) || !integer(p.cursor, 3) || !integer(p.hint, 5) ||
       !integer(p.attempts, 100000) || typeof p.assisted !== 'boolean' || !Array.isArray(p.results) || p.results.length > lessons.length)
     throw new Error('Ungültiger Fortschritt');
   const results: Result[] = p.results.map((r: Result) => {
@@ -113,10 +125,11 @@ export function restore(raw: string): State {
       throw new Error('Ungültiges Ergebnis');
     return { id: r.id, assisted: r.assisted, attempts: r.attempts };
   });
-  const s = start(p.scene, results);
-  const kind = kindOf(p.scene);
+  const scene = migrateScene(p.scene, version);
+  const s = start(scene, results);
+  const kind = kindOf(scene);
   const cursor = kind === 'identify' || kind === 'summary' ? 0 : p.cursor;
-  return { ...s, cursor, fen: position(p.scene, cursor), hint: p.hint,
+  return { ...s, cursor, fen: position(scene, cursor), hint: p.hint,
     assisted: p.assisted || p.hint > 0, attempts: p.attempts,
     message: 'Deine Lernrunde wurde wieder geöffnet. Du kannst weiterarbeiten.' };
 }

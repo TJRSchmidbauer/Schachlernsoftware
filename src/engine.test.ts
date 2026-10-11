@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Chess, type Square } from 'chess.js';
 import { lessons, scenes } from './lessons';
-import { attempt, chooseTarget, complete, lastScene, moveUci, next, restore, reveal, save, start, step, undo } from './engine';
+import { attempt, chooseTarget, complete, lastScene, playReply, moveUci, next, restore, reveal, save, start, step, undo } from './engine';
 
 describe('Geprüfte Gabel-Lektionen', () => {
   for (const lesson of lessons) {
@@ -39,7 +39,7 @@ describe('Geprüfte Gabel-Lektionen', () => {
     expect(next(s).results[0].assisted).toBe(true);
   });
   it('zeichnet selbstständigen Transfer auf', () => {
-    let s = start(3);
+    let s = start(4);
     s = attempt(s, 'e4', 'c5'); s = step(s); s = attempt(s, 'c5', 'd7');
     expect(next(s).results[0].assisted).toBe(false);
   });
@@ -49,10 +49,22 @@ describe('Geprüfte Gabel-Lektionen', () => {
     expect(next(s).results[0].assisted).toBe(true);
   });
   it('nimmt eine Fehlzugfolge vollständig zurück', () => {
-    const s = attempt(start(2), 'e5', 'd7');
+    const s = playReply(attempt(start(2), 'e5', 'd7'));
     expect(s.counterexample).toBe(true);
     expect(undo(s).fen).toBe(start(2).fen);
     expect(undo(s).attempts).toBe(1);
+  });
+  it('zeigt die Fehlzugantwort zeitlich versetzt und kann sie vorher abbrechen', () => {
+    const first = attempt(start(2), 'e5', 'd7');
+    expect(first.pending).toBe('d8d7');
+    expect(new Chess(first.fen).get('d8' as Square)?.type).toBe('q');
+    const full = playReply(first);
+    expect(full.pending).toBeNull();
+    expect(full.fen).not.toBe(first.fen);
+    expect(playReply(full)).toBe(full);
+    const undone = undo(first);
+    expect(undone.pending).toBeNull();
+    expect(undone.fen).toBe(start(2).fen);
   });
   it('nimmt den eigenen Zug samt Antwort zurück', () => {
     const s = step(attempt(start(2), 'e5', 'c6'));
@@ -87,13 +99,21 @@ describe('Geprüfte Gabel-Lektionen', () => {
   it('speichert mit Version und liest alte Daten ohne Version weiter', () => {
     const s = start(2);
     const raw = save(s);
-    expect(JSON.parse(raw).version).toBe(1);
+    expect(JSON.parse(raw).version).toBe(2);
     const legacy = JSON.parse(raw); delete legacy.version;
     expect(restore(JSON.stringify(legacy)).scene).toBe(2);
   });
+  it('migriert Version-1-Fortschritt auf die neue Szenenfolge', () => {
+    const v1 = (scene: number) => JSON.stringify({ version: 1, scene, cursor: 0, hint: 0, assisted: false, attempts: 0, results: [] });
+    expect(restore(v1(2)).scene).toBe(2);
+    expect(scenes[restore(v1(3)).scene].lesson).toBe('gabel-transfer-v1');
+    expect(scenes[restore(v1(3)).scene].kind).toBe('solve');
+    expect(restore(v1(4)).scene).toBe(lastScene);
+    expect(() => restore(v1(5))).toThrow();
+  });
   it('lehnt unbekannte Versionen und manipulierte Daten ab', () => {
     const good = JSON.parse(save(start(2)));
-    expect(() => restore(JSON.stringify({ ...good, version: 2 }))).toThrow();
+    expect(() => restore(JSON.stringify({ ...good, version: 3 }))).toThrow();
     expect(() => restore(JSON.stringify({ ...good, scene: lastScene + 1 }))).toThrow();
     expect(() => restore(JSON.stringify({ ...good, hint: 6 }))).toThrow();
     expect(() => restore(JSON.stringify({ ...good, results: [{ id: 'x', assisted: true, attempts: 1 }] }))).toThrow();

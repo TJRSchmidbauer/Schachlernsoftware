@@ -26,13 +26,15 @@ export const lessons: readonly Lesson[] = [
 ];
 
 export type SceneKind = 'watch' | 'identify' | 'solve' | 'summary';
-export type Scene = { kind: SceneKind; title: string; lesson: string };
+/** `aided: false` blendet bei Erkennungsaufgaben die Angriffspfeile aus. */
+export type Scene = { kind: SceneKind; title: string; lesson: string; aided?: boolean };
 
 /** Ablauf der Lernrunde: neue Szenen oder Lektionen werden hier ergänzt, nicht in der Engine. */
 export const scenes: readonly Scene[] = [
   { kind: 'watch', title: 'Entdecken', lesson: 'gabel-entdecken-v1' },
   { kind: 'identify', title: 'Ziele erkennen', lesson: 'gabel-entdecken-v1' },
   { kind: 'solve', title: 'Selbst ziehen', lesson: 'gabel-entdecken-v1' },
+  { kind: 'identify', title: 'Selbst erkennen', lesson: 'gabel-transfer-v1', aided: false },
   { kind: 'solve', title: 'Neu anwenden', lesson: 'gabel-transfer-v1' },
   { kind: 'summary', title: 'Geschafft', lesson: 'gabel-transfer-v1' },
 ];

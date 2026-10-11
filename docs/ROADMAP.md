@@ -19,8 +19,7 @@ Lichess-CC0-Import mit korrektem erstem gegnerischem Zug; schachliche/didaktisch
 
 ## Bekannte Grenzen
 - Kein adaptiver Gesamtkurs, Login, Dashboard oder Beherrschungsnachweis.
-- Fehlzugfolge erscheint als fertige Stellung; zeitlich getrennte Animation offen.
-- Wahrnehmungsaufgabe zeigt Angriffspfeile und ist daher unterstützt.
+- Eine Erkennungsaufgabe ohne Pfeile existiert; weitere Motive noch nicht.
 - Lokale Daten sind veränderbar; geteilte Geräte erfordern Zurücksetzen.
 - Noch keine vollständige WCAG-Prüfung oder Screenreader-Schachbedienung.
 
