@@ -64,6 +64,12 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build 2>&1 | tee reports/build.log
 
+      - name: Browser tests (Chromium, Touch, Tastatur, axe)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          npx playwright install --with-deps chromium 2>&1 | tee reports/playwright-install.log
+          npx playwright test 2>&1 | tee reports/e2e.log
+
       - name: Audit production dependency graph
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm audit --omit=dev --audit-level=high --json > reports/npm-audit.json
