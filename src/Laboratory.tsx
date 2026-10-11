@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Chess, type Square } from 'chess.js';
-import { scenes } from './lessons';
+import { lessons, scenes } from './lessons';
+const lessonById = (id: string) => lessons.find(l => l.id === id)!;
 import Board, { type Arrow } from './Board';
-import { attempt, chooseTarget, playReply, complete, isSolve, kindOf, lessonFor, next, restore, reveal, save, start, step, storageKey, titles, undo } from './engine';
+import { attempt, chooseTarget, playReply, complete, isSolve, kindOf, lessonFor, next, restore, nextPath, hasNextPath, pathOf, reveal, save, sceneIndexes, start, step, storageKey, undo } from './engine';
 
 export default function Laboratory() {
   const [state, setState] = useState(() => start());
@@ -46,15 +47,16 @@ export default function Laboratory() {
     if (piece?.color === 'w') { setSelected(square === selected ? null : square); return; }
     if (selected) { setState(s => attempt(s, selected, square)); setSelected(null); }
   }
-  const hints = ['', 'Suche einen Zug, der König und Dame gleichzeitig angreift.', 'Die beiden Ziele sind eingerahmt.',
-    'Der Springer ist die passende Figur.', 'Der durchgezogene Pfeil zeigt den gesuchten Zug.', 'Du kannst dir die Züge einzeln vormachen lassen.'];
+  const hints = ['', ...lesson.texts.hints];
+  const path = pathOf(state.scene);
+  const stepIndexes = sceneIndexes(state.scene);
   return <main>
     <header className="top"><a href="/" className="brand">Schachlabor<span>Lernen durch Züge</span></a><span className="badge">Prototyp · ohne Konto</span></header>
-    <section className="intro"><p className="eyebrow">Lernpfad 01 · Doppelangriff</p><h1>Ein Zug. Zwei Ziele.</h1><p>Entdecke die Gabel. Probiere aus. Hilfe ist jederzeit erlaubt.</p></section>
-    <ol className="steps" aria-label="Lektionsfortschritt">{titles.map((title, i) => <li key={title} className={i === state.scene ? 'current' : i < state.scene ? 'past' : ''} aria-current={i === state.scene ? 'step' : undefined}><span>{i + 1}</span>{title}</li>)}</ol>
+    <section className="intro"><p className="eyebrow">{path.eyebrow}</p><h1>{path.headline}</h1><p>{path.lead}</p></section>
+    <ol className="steps" aria-label="Lektionsfortschritt">{stepIndexes.map((index, n) => <li key={index} className={index === state.scene ? 'current' : index < state.scene ? 'past' : ''} aria-current={index === state.scene ? 'step' : undefined}><span>{n + 1}</span>{scenes[index].title}</li>)}</ol>
     <section className="workspace" aria-label="Interaktive Lektion">
       <div className="board-area"><Board fen={state.fen} selected={selected} marks={marks} legal={legal} arrows={arrows} onSquare={squareClick} /><p className="legend">Figur antippen → Zielfeld antippen · Pfeiltasten und Enter funktionieren ebenfalls.</p></div>
-      <aside className="panel"><p className="eyebrow">{titles[state.scene]}</p><h2>{kindOf(state.scene) === 'summary' ? 'Motiv entdeckt' : kindOf(state.scene) === 'identify' ? 'Wen greift der Springer an?' : 'Die Springergabel'}</h2>
+      <aside className="panel"><p className="eyebrow">{scenes[state.scene].title}</p><h2>{kindOf(state.scene) === 'summary' ? 'Motiv entdeckt' : kindOf(state.scene) === 'identify' ? lesson.texts.identifyHeading : lesson.texts.heading}</h2>
         <p className="feedback" role="status" aria-live="polite">{state.message}</p>
         {kindOf(state.scene) === 'watch' && !complete(state) && <button className="primary" disabled={!ready} onClick={() => setState(s => step(s))}>Nächsten Zug zeigen</button>}
         {state.cursor === 1 && isSolve(state.scene) && !state.counterexample && <button className="primary" onClick={() => setState(s => step(s))}>Antwort von Schwarz zeigen</button>}
@@ -67,7 +69,7 @@ export default function Laboratory() {
         </div>}
         {state.attempts >= 2 && state.hint === 0 && !complete(state) && <p className="gentle">Du kannst dir einen Hinweis holen. Hilfe ist kein Fehler.</p>}
         {complete(state) && kindOf(state.scene) !== 'summary' && <button className="primary" disabled={!ready} onClick={() => { setSelected(null); setState(s => next(s)); }}>Weiter</button>}
-        {kindOf(state.scene) === 'summary' && <><ul className="results">{state.results.map(r => <li key={r.id}>{r.id.includes('transfer') ? 'Neue Stellung' : 'Erste Stellung'}<span>{r.assisted ? 'Mit Unterstützung gelöst' : 'Ohne Lösungshilfe gelöst'}</span></li>)}</ul><p>Das ist ein erster Schritt, noch kein Nachweis dauerhafter Beherrschung. Weitere Motive folgen.</p></>}
+        {kindOf(state.scene) === 'summary' && <><ul className="results">{state.results.filter(r => lessonById(r.id).path === path.id).map(r => <li key={r.id}>{r.id.includes('transfer') ? 'Neue Stellung' : 'Erste Stellung'}<span>{r.assisted ? 'Mit Unterstützung gelöst' : 'Ohne Lösungshilfe gelöst'}</span></li>)}</ul><p>Das ist ein erster Schritt, noch kein Nachweis dauerhafter Beherrschung.</p>{hasNextPath(state.scene) && <button className="primary" disabled={!ready} onClick={() => { setSelected(null); setState(s => nextPath(s)); }}>Nächstes Motiv</button>}</>}
         <details><summary>Was bedeutet die Markierung?</summary><p>Gestrichelte rote Pfeile zeigen Angriffe. Durchgezogene blaue Pfeile zeigen einen Zug. Rahmen kennzeichnen wichtige Figuren. Punkte zeigen erlaubte Zielfelder einer ausgewählten Figur.</p></details>
       </aside>
     </section>

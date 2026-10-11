@@ -46,6 +46,8 @@ Dieser Plan ersetzt die grobe Roadmap nicht, sondern macht sie umsetzbar: Arbeit
 - 🟢.
 
 ## Phase C – Inhalt wächst (0.3a, ca. 1–2 Wochen)
+**Status 11.10.2026:** C1 ✅ (Lektion enthält alle Texte; Motive als `paths`/`scenes` in `lessons.ts`; Inhaltsprüfung für jede Lektion: legale Züge, Zielfiguren, Fehlzug kostet Material, Durchspielen über die Engine) · C2 🟡 (Fesselung mit 2 Stellungen: Läufer fesselt Springer an König; Test prüft, dass Weiß auf **jede** legale Antwort von Schwarz mindestens einen Springer gewinnt. 🔴 Schachdidaktische Prüfung offen: zweite Stellung ist bisher eine Spiegelung der ersten und sollte durch eine strukturell andere ersetzt werden, z. B. Turmfesselung auf einer Linie.) · C3, C4 offen.
+
 **AP C1 – Allgemeines Lektionsformat**: `Lesson` → Typ mit Motiv, Stellungen, kuratierten Fehlzügen, Hilfetexten; JSON-Validierung per Test (jede Linie legal, Ziele korrekt, Gegenbeispiel wirklich schlecht → mit chess.js geprüft).
 - 🟢 Format. 
 **AP C2 – Weitere Motive**: Reihenfolge-Vorschlag 🟡: Fesselung → Spieß → Abzug → Mattmuster in 1 → Grundlinienmatt. Je Motiv 4–6 Stellungen (Entdecken, Erkennen, Lösen, 2× Transfer, Gegenbeispiel).

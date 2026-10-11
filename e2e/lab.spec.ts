@@ -28,6 +28,12 @@ async function solve(page: Page, from: string, to: string, capture: string) {
   await square(page, capture).click();
 }
 
+async function pick(page: Page, a: string, b: string) {
+  await square(page, a).click();
+  await square(page, b).click();
+  await button(page, 'Weiter').click();
+}
+
 test.beforeEach(async ({ page }) => { await page.goto('/'); });
 
 test('komplette Lernrunde ohne Hilfe', async ({ page }) => {
@@ -148,3 +154,25 @@ for (const [name, setup] of [
     expect(result.violations.map(v => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 }
+
+test('zweites Motiv: Fesselung nach der Gabel', async ({ page }) => {
+  await watchScene(page); await identifyScene(page);
+  await solve(page, 'e5', 'c6', 'd8'); await button(page, 'Weiter').click();
+  await unaidedScene(page);
+  await solve(page, 'e4', 'c5', 'd7'); await button(page, 'Weiter').click();
+  await button(page, 'Nächstes Motiv').click();
+  await expect(page.locator('h1')).toContainText('Nicht ziehen dürfen');
+  await expect(current(page)).toContainText('Entdecken');
+  await expect(page.locator('.steps li')).toHaveCount(6);
+  await watchScene(page);
+  await expect(page.locator('h2')).toContainText('Was ist gefesselt?');
+  await pick(page, 'c6', 'e8');
+  await solve(page, 'e2', 'b5', 'c6'); await button(page, 'Weiter').click();
+  await expect(page.locator('svg.arrows line')).toHaveCount(0);
+  await pick(page, 'f6', 'd8');
+  await solve(page, 'd2', 'g5', 'f6'); await button(page, 'Weiter').click();
+  await expect(current(page)).toContainText('Geschafft');
+  await expect(page.locator('.results li')).toHaveCount(2);
+  await expect(page.locator('.results li').first()).toContainText('Ohne Lösungshilfe gelöst');
+  await expect(button(page, 'Nächstes Motiv')).toHaveCount(0);
+});

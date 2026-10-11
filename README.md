@@ -7,6 +7,7 @@ Erster visueller Lernprototyp für Schule und AG, noch keine fertige Plattform.
 - Entdecken → Ziele erkennen → selbst ziehen → neue Stellung → Auswertung.
 - Fünf Hilfestufen, Rücknahme, schrittweises Vormachen.
 - Zwei Gabel-Stellungen und je eine kuratierte Fehlzugfolge, deren Antwort zeitlich versetzt erscheint.
+- Zwei Motive: Gabel (Doppelangriff) und Fesselung, je zwei Stellungen.
 - Erkennungsaufgabe einmal mit und einmal ohne Angriffspfeile.
 - Klick, Touch und Tastatur; Fortschritt nur im lokalen Browser.
 - Getrennte Ergebnisse mit/ohne Lösungshilfe; keine Rangliste und kein Zeitdruck.
@@ -34,5 +35,5 @@ Stand 10.10.2026 kündigt Next.js für den 14.10.2026 ein Sicherheitsupdate wege
 Kein Login, Backend, Dashboard oder KI-Trainer. Zwei Stellungen belegen keine dauerhafte Beherrschung. Lokaler Fortschritt ist veränderbar. Geteilte Geräte: Lernrunde zurücksetzen. Keine personenbezogenen Daten eingeben. Kein Lernfortschritt wird an einen Server gesendet; Webserver können Zugriffe protokollieren. Roadmap: `docs/ROADMAP.md`.
 
 ## Architektur und Lizenz
-`src/lessons.ts`: Inhalte; `src/engine.ts`: Zustandslogik; `src/Board.tsx`: Brett; `src/Laboratory.tsx`: Oberfläche; `src/engine.test.ts`: Tests.
+`src/lessons.ts`: Inhalte, Texte und Ablauf (neues Motiv = neue Lektionen + `pathScenes`); `src/engine.ts`: Zustandslogik; `src/Board.tsx`: Brett; `src/Laboratory.tsx`: Oberfläche; `src/engine.test.ts`: Tests.
 Eigene Grafiken und Inhalte, noch keine Projektlizenz gewählt. Abhängigkeiten behalten ihre eigenen Lizenzen. Keine Chessground-Dateien oder Lichess-Aufgaben enthalten.
