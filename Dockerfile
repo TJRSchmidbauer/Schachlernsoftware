@@ -1,8 +1,8 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY package*.json ./
-RUN npm install --no-fund --no-audit
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci --no-fund --no-audit
 COPY . .
 RUN npm run test && npm run typecheck && npm run build
 

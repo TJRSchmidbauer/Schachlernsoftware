@@ -23,4 +23,4 @@ Lichess-CC0-Import mit korrektem erstem gegnerischem Zug; schachliche/didaktisch
 - Wahrnehmungsaufgabe zeigt Angriffspfeile und ist daher unterstützt.
 - Lokale Daten sind veränderbar; geteilte Geräte erfordern Zurücksetzen.
 - Noch keine vollständige WCAG-Prüfung oder Screenreader-Schachbedienung.
-- Noch keine Lockdatei, CI-Pipeline oder gepinnten Container-Digests.
+
