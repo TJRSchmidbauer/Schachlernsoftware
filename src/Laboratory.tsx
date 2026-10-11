@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Chess, type Square } from 'chess.js';
 import Board, { type Arrow } from './Board';
-import { attempt, chooseTarget, complete, lessonFor, next, restore, reveal, save, start, step, storageKey, titles, undo } from './engine';
+import { attempt, chooseTarget, complete, isSolve, kindOf, lessonFor, next, restore, reveal, save, start, step, storageKey, titles, undo } from './engine';
 
 export default function Laboratory() {
   const [state, setState] = useState(() => start());
@@ -21,10 +21,10 @@ export default function Laboratory() {
   }, [state, ready]);
   const game = new Chess(state.fen);
   const lesson = lessonFor(state.scene);
-  const interactive = ready && (state.scene === 2 || state.scene === 3) && state.cursor !== 1 && !complete(state) && !state.counterexample;
+  const interactive = ready && isSolve(state.scene) && state.cursor !== 1 && !complete(state) && !state.counterexample;
   const legal = selected && interactive ? game.moves({ square: selected as Square, verbose: true }).map(m => m.to) : [];
   const arrows: Arrow[] = [];
-  if ((state.scene === 0 && state.cursor === 1) || state.scene === 1 || (state.cursor === 1 && !state.counterexample))
+  if ((kindOf(state.scene) === 'watch' && state.cursor === 1) || kindOf(state.scene) === 'identify' || (state.cursor === 1 && !state.counterexample))
     for (const to of lesson.targets) arrows.push({ from: lesson.landing, to, kind: 'attack' });
   if (state.hint >= 4 && state.cursor !== 1 && state.cursor < 3 && !state.counterexample) {
     const uci = lesson.line[state.cursor]; arrows.push({ from: uci.slice(0, 2), to: uci.slice(2, 4), kind: 'move' });
@@ -34,7 +34,7 @@ export default function Laboratory() {
   if (state.hint >= 3 && state.cursor === 0 && !state.counterexample) marks.push(lesson.attacker);
   function squareClick(square: string) {
     if (!ready) return;
-    if (state.scene === 1) { setState(s => chooseTarget(s, square)); return; }
+    if (kindOf(state.scene) === 'identify') { setState(s => chooseTarget(s, square)); return; }
     if (!interactive) return;
     const piece = game.get(square as Square);
     if (piece?.color === 'w') { setSelected(square === selected ? null : square); return; }
@@ -48,11 +48,11 @@ export default function Laboratory() {
     <ol className="steps" aria-label="Lektionsfortschritt">{titles.map((title, i) => <li key={title} className={i === state.scene ? 'current' : i < state.scene ? 'past' : ''} aria-current={i === state.scene ? 'step' : undefined}><span>{i + 1}</span>{title}</li>)}</ol>
     <section className="workspace" aria-label="Interaktive Lektion">
       <div className="board-area"><Board fen={state.fen} selected={selected} marks={marks} legal={legal} arrows={arrows} onSquare={squareClick} /><p className="legend">Figur antippen → Zielfeld antippen · Pfeiltasten und Enter funktionieren ebenfalls.</p></div>
-      <aside className="panel"><p className="eyebrow">{titles[state.scene]}</p><h2>{state.scene === 4 ? 'Motiv entdeckt' : state.scene === 1 ? 'Wen greift der Springer an?' : 'Die Springergabel'}</h2>
+      <aside className="panel"><p className="eyebrow">{titles[state.scene]}</p><h2>{kindOf(state.scene) === 'summary' ? 'Motiv entdeckt' : kindOf(state.scene) === 'identify' ? 'Wen greift der Springer an?' : 'Die Springergabel'}</h2>
         <p className="feedback" role="status" aria-live="polite">{state.message}</p>
-        {state.scene === 0 && !complete(state) && <button className="primary" disabled={!ready} onClick={() => setState(s => step(s))}>Nächsten Zug zeigen</button>}
-        {state.cursor === 1 && state.scene >= 2 && state.scene <= 3 && !state.counterexample && <button className="primary" onClick={() => setState(s => step(s))}>Antwort von Schwarz zeigen</button>}
-        {(state.scene === 2 || state.scene === 3) && !complete(state) && <div className="tools">
+        {kindOf(state.scene) === 'watch' && !complete(state) && <button className="primary" disabled={!ready} onClick={() => setState(s => step(s))}>Nächsten Zug zeigen</button>}
+        {state.cursor === 1 && isSolve(state.scene) && !state.counterexample && <button className="primary" onClick={() => setState(s => step(s))}>Antwort von Schwarz zeigen</button>}
+        {isSolve(state.scene) && !complete(state) && <div className="tools">
           <button disabled={state.counterexample || state.hint === 5} onClick={() => { setSelected(null); setState(s => reveal(s)); }}>Hilfe {state.hint}/5</button>
           <button onClick={() => { setSelected(null); setState(s => undo(s)); }}>Zurücknehmen</button>
         </div>}
@@ -60,8 +60,8 @@ export default function Laboratory() {
           {state.hint === 5 && !state.counterexample && state.cursor !== 1 && <button onClick={() => { setSelected(null); setState(s => step(s, true)); }}>Diesen Zug vormachen</button>}
         </div>}
         {state.attempts >= 2 && state.hint === 0 && !complete(state) && <p className="gentle">Du kannst dir einen Hinweis holen. Hilfe ist kein Fehler.</p>}
-        {complete(state) && state.scene < 4 && <button className="primary" disabled={!ready} onClick={() => { setSelected(null); setState(s => next(s)); }}>Weiter</button>}
-        {state.scene === 4 && <><ul className="results">{state.results.map(r => <li key={r.id}>{r.id.includes('transfer') ? 'Neue Stellung' : 'Erste Stellung'}<span>{r.assisted ? 'Mit Unterstützung gelöst' : 'Ohne Lösungshilfe gelöst'}</span></li>)}</ul><p>Das ist ein erster Schritt, noch kein Nachweis dauerhafter Beherrschung. Weitere Motive folgen.</p></>}
+        {complete(state) && kindOf(state.scene) !== 'summary' && <button className="primary" disabled={!ready} onClick={() => { setSelected(null); setState(s => next(s)); }}>Weiter</button>}
+        {kindOf(state.scene) === 'summary' && <><ul className="results">{state.results.map(r => <li key={r.id}>{r.id.includes('transfer') ? 'Neue Stellung' : 'Erste Stellung'}<span>{r.assisted ? 'Mit Unterstützung gelöst' : 'Ohne Lösungshilfe gelöst'}</span></li>)}</ul><p>Das ist ein erster Schritt, noch kein Nachweis dauerhafter Beherrschung. Weitere Motive folgen.</p></>}
         <details><summary>Was bedeutet die Markierung?</summary><p>Gestrichelte rote Pfeile zeigen Angriffe. Durchgezogene blaue Pfeile zeigen einen Zug. Rahmen kennzeichnen wichtige Figuren. Punkte zeigen erlaubte Zielfelder einer ausgewählten Figur.</p></details>
       </aside>
     </section>

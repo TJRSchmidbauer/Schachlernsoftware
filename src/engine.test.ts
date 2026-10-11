@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Chess, type Square } from 'chess.js';
-import { lessons } from './lessons';
-import { attempt, chooseTarget, complete, moveUci, next, restore, reveal, save, start, step, undo } from './engine';
+import { lessons, scenes } from './lessons';
+import { attempt, chooseTarget, complete, lastScene, moveUci, next, restore, reveal, save, start, step, undo } from './engine';
 
 describe('Geprüfte Gabel-Lektionen', () => {
   for (const lesson of lessons) {
@@ -66,5 +66,38 @@ describe('Geprüfte Gabel-Lektionen', () => {
   });
   it('überspringt unvollständige Szenen nicht', () => {
     expect(next(start(2)).scene).toBe(2);
+  });
+  it('verweist jede Szene auf eine vorhandene Lektion und endet mit der Zusammenfassung', () => {
+    for (const sc of scenes) expect(lessons.some(l => l.id === sc.lesson)).toBe(true);
+    expect(scenes[lastScene].kind).toBe('summary');
+    expect(scenes.filter(sc => sc.kind === 'summary')).toHaveLength(1);
+  });
+  it('führt jede Szene in Folge ohne Abbruch aus', () => {
+    let s = start();
+    for (let i = 0; i < lastScene; i++) {
+      const { kind } = scenes[s.scene];
+      if (kind === 'watch') { s = step(s); s = step(s); s = step(s); }
+      else if (kind === 'identify') { for (const t of lessons.find(l => l.id === scenes[s.scene].lesson)!.targets) s = chooseTarget(s, t); }
+      else { s = step(s, true); s = step(s, true); s = step(s, true); }
+      s = next(s);
+      expect(s.scene).toBe(i + 1);
+    }
+    expect(s.results).toHaveLength(2);
+  });
+  it('speichert mit Version und liest alte Daten ohne Version weiter', () => {
+    const s = start(2);
+    const raw = save(s);
+    expect(JSON.parse(raw).version).toBe(1);
+    const legacy = JSON.parse(raw); delete legacy.version;
+    expect(restore(JSON.stringify(legacy)).scene).toBe(2);
+  });
+  it('lehnt unbekannte Versionen und manipulierte Daten ab', () => {
+    const good = JSON.parse(save(start(2)));
+    expect(() => restore(JSON.stringify({ ...good, version: 2 }))).toThrow();
+    expect(() => restore(JSON.stringify({ ...good, scene: lastScene + 1 }))).toThrow();
+    expect(() => restore(JSON.stringify({ ...good, hint: 6 }))).toThrow();
+    expect(() => restore(JSON.stringify({ ...good, results: [{ id: 'x', assisted: true, attempts: 1 }] }))).toThrow();
+    expect(() => restore('kein json')).toThrow();
+    expect(() => restore('null')).toThrow();
   });
 });

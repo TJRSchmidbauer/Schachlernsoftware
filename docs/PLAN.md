@@ -18,6 +18,8 @@ Dieser Plan ersetzt die grobe Roadmap nicht, sondern macht sie umsetzbar: Arbeit
 ---
 
 ## Phase A – Fundament festigen (0.2a, ca. 1–2 Tage)
+**Status 11.10.2026:** A1 ✅ (CI grün auf main) · A3 ✅ (`scenes` in `lessons.ts`, Engine ohne Magic Numbers) · A4 ✅ (Speicherformat mit `version`, alte Daten ohne Version werden weiter gelesen, unbekannte Versionen abgelehnt; 17 Tests) · A2 ⏳ (Next.js 16.4.0 ist noch `latest`, Update erst ab 14.10. erwartet).
+
 **AP A1 – Toolchain & CI grün** *(erledigt bis auf CI-Lauf)*: Lockdatei, `.npmrc`, Dockerfile mit `npm ci`. Abnahme: GitHub-Action „Quality checks“ grün.
 - 🟢 Ob `legacy-peer-deps` später durch ein Vitest-Update überflüssig wird.
 
