@@ -169,8 +169,8 @@ test('zweites Motiv: Fesselung nach der Gabel', async ({ page }) => {
   await pick(page, 'c6', 'e8');
   await solve(page, 'e2', 'b5', 'c6'); await button(page, 'Weiter').click();
   await expect(page.locator('svg.arrows line')).toHaveCount(0);
-  await pick(page, 'f6', 'd8');
-  await solve(page, 'd2', 'g5', 'f6'); await button(page, 'Weiter').click();
+  await pick(page, 'e8', 'g8');
+  await solve(page, 'd1', 'd8', 'e8'); await button(page, 'Weiter').click();
   await expect(current(page)).toContainText('Geschafft');
   await expect(page.locator('.results li')).toHaveCount(2);
   await expect(page.locator('.results li').first()).toContainText('Ohne Lösungshilfe gelöst');

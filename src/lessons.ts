@@ -64,12 +64,12 @@ export const lessons: readonly Lesson[] = [
     texts: fesselungTexts(),
   },
   {
-    id: 'fesselung-transfer-v1', path: 'fesselung',
-    fen: '3k4/ppp4p/5n2/8/8/8/PPPB4/1K2R3 w - - 0 1',
-    line: ['d2g5', 'h7h6', 'g5f6'],
-    attacker: 'd2', landing: 'g5', targets: ['f6', 'd8'],
-    counterexample: ['e1e8', 'd8e8'],
-    texts: fesselungTexts(),
+    id: 'fesselung-transfer-v2', path: 'fesselung',
+    fen: '4n1k1/5ppp/8/2B5/8/8/5PPP/3R2K1 w - - 0 1',
+    line: ['d1d8', 'h7h6', 'd8e8'],
+    attacker: 'd1', landing: 'd8', targets: ['e8', 'g8'],
+    counterexample: ['c5f8', 'g8f8'],
+    texts: rookPinTexts(),
   },
 ];
 
@@ -122,6 +122,26 @@ function fesselungTexts(): Texts {
   };
 }
 
+function rookPinTexts(): Texts {
+  return {
+    ...fesselungTexts(),
+    watch: ['Der Turm fesselt den Springer auf der Grundreihe: Der Läufer nimmt dem König das Feld f8.',
+      'Schwarz kann den Springer nicht ziehen und nicht mehr schützen.',
+      'Der gefesselte Springer ist gewonnen. Auch ein Turm kann fesseln.'],
+    watchStart: 'Beobachte: Ein Turm richtet sich auf eine Figur, hinter der der König steht.',
+    identifyStart: 'Tippe die gefesselte Figur und den König dahinter an.',
+    identifyMiss: 'Suche die Figur auf der Linie des Turms und den König dahinter.',
+    goal: 'Fessle den schwarzen Springer mit dem Turm an seinen König.',
+    legalOther: 'Der Zug ist legal. Für diese Aufgabe suchen wir die Fesselung des Springers mit dem Turm. Dein Versuch wurde zurückgenommen.',
+    afterFirst: 'Der Springer ist gefesselt. Zeige jetzt die Antwort von Schwarz.',
+    counterPending: 'Dein Läufer steht jetzt dort. Schwarz antwortet gleich …',
+    counterDone: 'Der König schlägt den Läufer. Eine ungedeckte Figur neben dem König kostet Material. Nimm den Versuch zurück.',
+    hints: ['Suche einen Zug, nach dem der Springer nicht mehr ziehen darf, weil dahinter der König steht.',
+      'Der gefesselte Springer und der König sind eingerahmt.', 'Der Turm ist die passende Figur.',
+      commonHints.four, commonHints.five],
+  };
+}
+
 export type SceneKind = 'watch' | 'identify' | 'solve' | 'summary';
 /** `aided: false` blendet bei Erkennungsaufgaben die Angriffspfeile aus. */
 export type Scene = { kind: SceneKind; title: string; lesson: string; path: string; aided?: boolean };
@@ -146,5 +166,5 @@ const pathScenes = (path: string, first: string, transfer: string): Scene[] => [
 /** Ablauf der Lernrunde: neue Szenen, Lektionen oder Motive werden hier ergänzt, nicht in der Engine. */
 export const scenes: readonly Scene[] = [
   ...pathScenes('gabel', 'gabel-entdecken-v1', 'gabel-transfer-v1'),
-  ...pathScenes('fesselung', 'fesselung-entdecken-v1', 'fesselung-transfer-v1'),
+  ...pathScenes('fesselung', 'fesselung-entdecken-v1', 'fesselung-transfer-v2'),
 ];
