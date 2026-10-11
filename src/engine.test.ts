@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Chess, type Square } from 'chess.js';
 import { lessons, paths, scenes } from './lessons';
-import { attempt, chooseTarget, complete, lastScene, nextPath, playReply, moveUci, next, restore, reveal, save, start, step, undo } from './engine';
+import { addDays, describe as describeStatus, germanDate, isDay, statusFor } from './progress';
+import { attempt, chooseTarget, complete, lastScene, nextPath, startPath, playReply, moveUci, next, restore, reveal, save, start, step, undo } from './engine';
 
 const value: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 /** Reiner Schlagtausch: bester Materialgewinn der Seite am Zug, wenn nur noch geschlagen wird. */
@@ -185,7 +186,7 @@ describe('Lernrunde', () => {
   it('speichert mit Version und liest alte Daten ohne Version weiter', () => {
     const s = start(2);
     const raw = save(s);
-    expect(JSON.parse(raw).version).toBe(2);
+    expect(JSON.parse(raw).version).toBe(3);
     const legacy = JSON.parse(raw); delete legacy.version;
     expect(restore(JSON.stringify(legacy)).scene).toBe(2);
   });
@@ -199,11 +200,67 @@ describe('Lernrunde', () => {
   });
   it('lehnt unbekannte Versionen und manipulierte Daten ab', () => {
     const good = JSON.parse(save(start(2)));
-    expect(() => restore(JSON.stringify({ ...good, version: 3 }))).toThrow();
+    expect(() => restore(JSON.stringify({ ...good, version: 4 }))).toThrow();
     expect(() => restore(JSON.stringify({ ...good, scene: lastScene + 1 }))).toThrow();
     expect(() => restore(JSON.stringify({ ...good, hint: 6 }))).toThrow();
     expect(() => restore(JSON.stringify({ ...good, results: [{ id: 'x', assisted: true, attempts: 1 }] }))).toThrow();
     expect(() => restore('kein json')).toThrow();
     expect(() => restore('null')).toThrow();
+  });
+  it('hält Lösungen mit Datum fest und liest Version-2-Stände ohne Verlauf', () => {
+    let s = start(2);
+    s = attempt(s, 'e5', 'c6'); s = step(s); s = attempt(s, 'c6', 'd8');
+    s = next(s, '2026-10-12');
+    expect(s.history).toEqual([{ id: 'gabel-entdecken-v1', day: '2026-10-12', assisted: false }]);
+    const saved = JSON.parse(save(s));
+    expect(restore(JSON.stringify(saved)).history).toEqual(s.history);
+    delete saved.history; saved.version = 2;
+    expect(restore(JSON.stringify(saved)).history).toEqual([]);
+    saved.history = [{ id: 'gabel-entdecken-v1', day: '2026-02-30', assisted: false }];
+    expect(() => restore(JSON.stringify(saved))).toThrow();
+  });
+  it('startet ein Motiv zur Wiederholung neu und behält Ergebnisse und Verlauf', () => {
+    const done = { ...start(5), results: [{ id: 'gabel-entdecken-v1', assisted: false, attempts: 0 }],
+      history: [{ id: 'gabel-entdecken-v1', day: '2026-10-12', assisted: false }] };
+    const again = startPath(done, 'gabel');
+    expect(again.scene).toBe(0);
+    expect(again.results).toEqual(done.results);
+    expect(again.history).toEqual(done.history);
+    expect(startPath(done, 'unbekannt')).toBe(done);
+  });
+});
+
+describe('Fortschrittsregel', () => {
+  const ids = ['a', 'b'];
+  const solve = (id: string, day: string, assisted = false) => ({ id, day, assisted });
+  it('zählt Tage, nicht Lösungen, und ignoriert Lösungen mit Hilfe', () => {
+    const st = statusFor([solve('a', '2026-10-12'), solve('b', '2026-10-12'), solve('a', '2026-10-13', true)], ids, '2026-10-12');
+    expect(st.days).toBe(1);
+    expect(st.consolidated).toBe(false);
+  });
+  it('gilt nach zwei verschiedenen Tagen als gefestigt', () => {
+    const st = statusFor([solve('a', '2026-10-12'), solve('b', '2026-10-15')], ids, '2026-10-16');
+    expect(st.consolidated).toBe(true);
+    expect(st.lastDay).toBe('2026-10-15');
+  });
+  it('plant Wiederholungen nach 1, 3 und dann 7 Tagen', () => {
+    const due = (days: string[], today: string) => statusFor(days.map(d => solve('a', d)), ids, today);
+    expect(due(['2026-10-12'], '2026-10-12')).toMatchObject({ nextDue: '2026-10-13', due: false });
+    expect(due(['2026-10-12'], '2026-10-13').due).toBe(true);
+    expect(due(['2026-10-12', '2026-10-13'], '2026-10-14').nextDue).toBe('2026-10-16');
+    expect(due(['2026-10-12', '2026-10-13', '2026-10-20', '2026-10-30'], '2026-10-30').nextDue).toBe('2026-11-06');
+  });
+  it('rechnet Datum korrekt und lehnt ungültige Tage ab', () => {
+    expect(addDays('2026-10-30', 3)).toBe('2026-11-02');
+    expect(addDays('2026-12-30', 3)).toBe('2027-01-02');
+    expect(germanDate('2026-10-05')).toBe('05.10.2026');
+    for (const bad of ['2026-02-30', '2026-13-01', '12.10.2026', 5, null]) expect(isDay(bad)).toBe(false);
+    expect(isDay('2026-02-28')).toBe(true);
+  });
+  it('formuliert vorsichtig, nie als Beherrschung', () => {
+    expect(describeStatus(statusFor([], ids, '2026-10-12'))).toContain('Noch nicht');
+    const text = describeStatus(statusFor([solve('a', '2026-10-12'), solve('a', '2026-10-13')], ids, '2026-10-13'));
+    expect(text).toContain('gefestigt');
+    expect(text).not.toMatch(/beherrsch/i);
   });
 });

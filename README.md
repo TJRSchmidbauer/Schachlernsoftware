@@ -8,6 +8,8 @@ Erster visueller Lernprototyp für Schule und AG, noch keine fertige Plattform.
 - Fünf Hilfestufen, Rücknahme, schrittweises Vormachen.
 - Zwei Gabel-Stellungen und je eine kuratierte Fehlzugfolge, deren Antwort zeitlich versetzt erscheint.
 - Zwei Motive: Gabel (Doppelangriff) und Fesselung, je zwei Stellungen.
+- Wiederholungsregel: Ein Motiv gilt nach selbstständigen Lösungen an zwei verschiedenen Tagen als „gefestigt“; Wiederholungen nach 1, 3 und 7 Tagen.
+- Lehrkräfte-Export ohne Server: Lernende erzeugen einen Code mit Kürzel, `/lehrkraft/` wertet mehrere Codes im Browser aus.
 - Erkennungsaufgabe einmal mit und einmal ohne Angriffspfeile.
 - Klick, Touch und Tastatur; Fortschritt nur im lokalen Browser.
 - Getrennte Ergebnisse mit/ohne Lösungshilfe; keine Rangliste und kein Zeitdruck.
@@ -32,7 +34,7 @@ http://127.0.0.1:3080 öffnen. Build führt Tests, Typecheck und statischen Expo
 Stand 10.10.2026 kündigt Next.js für den 14.10.2026 ein Sicherheitsupdate wegen zwei Critical- und einer High-Schwachstelle in upstream-Abhängigkeiten an. Vor öffentlicher Bereitstellung Advisory, Betroffenheit, gepatchte Versionen und Abhängigkeiten erneut prüfen: https://nextjs.org/blog
 
 ## Grenzen und Daten
-Kein Login, Backend, Dashboard oder KI-Trainer. Zwei Stellungen belegen keine dauerhafte Beherrschung. Lokaler Fortschritt ist veränderbar. Geteilte Geräte: Lernrunde zurücksetzen. Keine personenbezogenen Daten eingeben. Kein Lernfortschritt wird an einen Server gesendet; Webserver können Zugriffe protokollieren. Roadmap: `docs/ROADMAP.md`.
+Kein Login, Backend, Dashboard oder KI-Trainer. Zwei Stellungen belegen keine dauerhafte Beherrschung. Lokaler Fortschritt ist veränderbar. Geteilte Geräte: Lernrunde zurücksetzen. Keine personenbezogenen Daten eingeben. Kein Lernfortschritt wird an einen Server gesendet. Den Export-Code geben Lernende selbst weiter (Kürzel statt Klarname; nicht fälschungssicher); Webserver können Zugriffe protokollieren. Roadmap: `docs/ROADMAP.md`.
 
 ## Architektur und Lizenz
 `src/lessons.ts`: Inhalte, Texte und Ablauf (neues Motiv = neue Lektionen + `pathScenes`); `src/engine.ts`: Zustandslogik; `src/Board.tsx`: Brett; `src/Laboratory.tsx`: Oberfläche; `src/engine.test.ts`: Tests.

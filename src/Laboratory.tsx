@@ -1,16 +1,20 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Chess, type Square } from 'chess.js';
-import { lessons, scenes } from './lessons';
+import { lessons, paths, scenes } from './lessons';
+import { describe, localDay, statusFor } from './progress';
+import { cleanLabel, encodeExport, maxLabel } from './exchange';
 const lessonById = (id: string) => lessons.find(l => l.id === id)!;
 import Board, { type Arrow } from './Board';
-import { attempt, chooseTarget, playReply, complete, isSolve, kindOf, lessonFor, next, restore, nextPath, hasNextPath, pathOf, reveal, save, sceneIndexes, start, step, storageKey, undo } from './engine';
+import { attempt, chooseTarget, playReply, complete, isSolve, kindOf, lessonFor, next, restore, nextPath, startPath, hasNextPath, pathOf, reveal, save, sceneIndexes, start, step, storageKey, undo } from './engine';
 
 export default function Laboratory() {
   const [state, setState] = useState(() => start());
   const [selected, setSelected] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [storageNotice, setStorageNotice] = useState('');
+  const [label, setLabel] = useState('');
+  const [code, setCode] = useState('');
   useEffect(() => {
     try { const raw = localStorage.getItem(storageKey); if (raw) setState(restore(raw)); }
     catch { setStorageNotice('Gespeicherter Fortschritt ist nicht verfügbar. Du kannst trotzdem lernen.'); }
@@ -69,10 +73,24 @@ export default function Laboratory() {
         </div>}
         {state.attempts >= 2 && state.hint === 0 && !complete(state) && <p className="gentle">Du kannst dir einen Hinweis holen. Hilfe ist kein Fehler.</p>}
         {complete(state) && kindOf(state.scene) !== 'summary' && <button className="primary" disabled={!ready} onClick={() => { setSelected(null); setState(s => next(s)); }}>Weiter</button>}
-        {kindOf(state.scene) === 'summary' && <><ul className="results">{state.results.filter(r => lessonById(r.id).path === path.id).map(r => <li key={r.id}>{r.id.includes('transfer') ? 'Neue Stellung' : 'Erste Stellung'}<span>{r.assisted ? 'Mit Unterstützung gelöst' : 'Ohne Lösungshilfe gelöst'}</span></li>)}</ul><p>Das ist ein erster Schritt, noch kein Nachweis dauerhafter Beherrschung.</p>{hasNextPath(state.scene) && <button className="primary" disabled={!ready} onClick={() => { setSelected(null); setState(s => nextPath(s)); }}>Nächstes Motiv</button>}</>}
+        {kindOf(state.scene) === 'summary' && <><ul className="results">{state.results.filter(r => lessonById(r.id).path === path.id).map(r => <li key={r.id}>{r.id.includes('transfer') ? 'Neue Stellung' : 'Erste Stellung'}<span>{r.assisted ? 'Mit Unterstützung gelöst' : 'Ohne Lösungshilfe gelöst'}</span></li>)}</ul><p>Das ist ein erster Schritt, noch kein Nachweis dauerhafter Beherrschung.</p>{hasNextPath(state.scene) && <button className="primary" disabled={!ready} onClick={() => { setSelected(null); setState(s => nextPath(s)); }}>Nächstes Motiv</button>}
+          <h3>Deine Motive</h3><ul className="overview">{paths.map(p => {
+            const ids = lessons.filter(l => l.path === p.id).map(l => l.id);
+            const status = statusFor(state.history, ids, localDay());
+            const started = state.results.some(r => ids.includes(r.id));
+            return <li key={p.id}><div><strong>{p.title}</strong><span>{started || status.days ? describe(status) : 'Noch nicht gestartet.'}</span></div>
+              <button onClick={() => { setSelected(null); setState(s => startPath(s, p.id)); }}>{started ? `${p.title} wiederholen` : `${p.title} starten`}</button></li>;
+          })}</ul></>}
         <details><summary>Was bedeutet die Markierung?</summary><p>Gestrichelte rote Pfeile zeigen Angriffe. Durchgezogene blaue Pfeile zeigen einen Zug. Rahmen kennzeichnen wichtige Figuren. Punkte zeigen erlaubte Zielfelder einer ausgewählten Figur.</p></details>
       </aside>
     </section>
-    <footer><p>Fortschritt wird nur in diesem Browser gespeichert. Keine Übertragung an einen Schüler-Server.</p>{storageNotice && <p role="status">{storageNotice}</p>}<button onClick={() => { if (window.confirm('Diese Lernrunde und ihren lokalen Fortschritt zurücksetzen?')) { setSelected(null); setState(start()); } }}>Lernrunde zurücksetzen</button></footer>
+    <footer><p>Fortschritt wird nur in diesem Browser gespeichert. Keine Übertragung an einen Schüler-Server.</p>{storageNotice && <p role="status">{storageNotice}</p>}<details className="export"><summary>Fortschritt für die Lehrkraft exportieren</summary>
+      <label htmlFor="label">Kürzel (kein Klarname, z. B. Fuchs-7)</label>
+      <input id="label" value={label} maxLength={maxLabel} onChange={e => { setLabel(e.target.value); setCode(''); }} />
+      <p><button onClick={() => setCode(encodeExport({ label: cleanLabel(label), results: state.results, history: state.history }))}>Code erzeugen</button></p>
+      {code && <><label htmlFor="code">Code zum Weitergeben</label><textarea id="code" readOnly rows={4} className="codes" value={code} onFocus={e => e.currentTarget.select()} />
+        <p className="gentle">Der Code enthält nur Kürzel, Datum und gelöste Aufgaben. Er wird nirgendwohin gesendet.</p></>}
+      <p><a href="/lehrkraft/">Übersicht für Lehrkräfte</a></p></details>
+    <button onClick={() => { if (window.confirm('Diese Lernrunde und ihren lokalen Fortschritt zurücksetzen?')) { setSelected(null); setState(start()); } }}>Lernrunde zurücksetzen</button></footer>
   </main>;
 }

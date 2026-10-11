@@ -1,11 +1,12 @@
 import { Chess, type Square } from 'chess.js';
+import { isDay, localDay, maxHistory, type Solve } from './progress';
 import { lessons, paths, scenes, type Lesson, type Path, type SceneKind } from './lessons';
 
 export type Result = { id: string; assisted: boolean; attempts: number };
 export type State = {
   scene: number; cursor: number; fen: string; hint: number;
   attempts: number; assisted: boolean; counterexample: boolean; pending: string | null;
-  targets: string[]; results: Result[]; message: string;
+  targets: string[]; results: Result[]; history: Solve[]; message: string;
 };
 export const lastScene = scenes.length - 1;
 export function pathOf(scene: number): Path { return paths.find(p => p.id === scenes[scene].path)!; }
@@ -30,9 +31,9 @@ export function position(scene: number, cursor: number) {
   for (let i = 0; i < count; i++) moveUci(game, lesson.line[i]);
   return game.fen();
 }
-export function start(scene = 0, results: Result[] = []): State {
+export function start(scene = 0, results: Result[] = [], history: Solve[] = []): State {
   return { scene, cursor: 0, fen: position(scene, 0), hint: 0, attempts: 0,
-    assisted: false, counterexample: false, pending: null, targets: [], results,
+    assisted: false, counterexample: false, pending: null, targets: [], results, history,
     message: kindOf(scene) === 'watch' ? lessonFor(scene).texts.watchStart :
       kindOf(scene) === 'identify' ? (scenes[scene].aided === false ?
         lessonFor(scene).texts.identifyUnaided : lessonFor(scene).texts.identifyStart) :
@@ -42,17 +43,27 @@ export function start(scene = 0, results: Result[] = []): State {
 export function complete(s: State) {
   return kindOf(s.scene) === 'summary' || (kindOf(s.scene) === 'identify' ? s.targets.length === 2 : s.cursor === 3 && !s.counterexample);
 }
-function record(s: State): Result[] {
-  if (!isSolve(s.scene)) return s.results;
+function record(s: State, day: string): Pick<State, 'results' | 'history'> {
+  if (!isSolve(s.scene)) return { results: s.results, history: s.history };
   const id = lessonFor(s.scene).id;
-  return [...s.results.filter(r => r.id !== id), { id, assisted: s.assisted, attempts: s.attempts }];
+  return {
+    results: [...s.results.filter(r => r.id !== id), { id, assisted: s.assisted, attempts: s.attempts }],
+    history: [...s.history, { id, day, assisted: s.assisted }].slice(-maxHistory),
+  };
 }
-export function next(s: State): State {
-  return complete(s) && kindOf(s.scene) !== 'summary' ? start(s.scene + 1, record(s)) : s;
+export function next(s: State, day = localDay()): State {
+  if (!complete(s) || kindOf(s.scene) === 'summary') return s;
+  const { results, history } = record(s, day);
+  return start(s.scene + 1, results, history);
 }
 /** Von der Zusammenfassung zum nächsten Motiv. */
 export function nextPath(s: State): State {
-  return kindOf(s.scene) === 'summary' && hasNextPath(s.scene) ? start(s.scene + 1, s.results) : s;
+  return kindOf(s.scene) === 'summary' && hasNextPath(s.scene) ? start(s.scene + 1, s.results, s.history) : s;
+}
+/** Beginnt ein Motiv von vorn (neu oder zur Wiederholung); Ergebnisse und Verlauf bleiben erhalten. */
+export function startPath(s: State, pathId: string): State {
+  const first = scenes.findIndex(sc => sc.path === pathId);
+  return first < 0 ? s : start(first, s.results, s.history);
 }
 export function reveal(s: State): State {
   if (!isSolve(s.scene) || complete(s) || s.counterexample) return s;
@@ -112,27 +123,41 @@ export function undo(s: State): State {
     message: 'Zurückgenommen. Du kannst einen anderen Zug ausprobieren.' };
 }
 export const storageKey = 'schachlabor.gabel.v1';
-export const storageVersion = 2;
+export const storageVersion = 3;
 /** Version 1 hatte vier statt fünf Szenen vor der Zusammenfassung: Szene 3+ rückt um eins weiter. */
 const migrateScene = (scene: number, version: number) => version < 2 && scene >= 3 ? scene + 1 : scene;
 export function save(s: State): string {
   return JSON.stringify({ version: storageVersion, scene: s.scene, cursor: s.counterexample ? 0 : s.cursor,
-    hint: s.hint, assisted: s.assisted, attempts: s.attempts, results: s.results });
+    hint: s.hint, assisted: s.assisted, attempts: s.attempts, results: s.results, history: s.history });
+}
+const isCount = (x: unknown, max: number) => Number.isInteger(x) && Number(x) >= 0 && Number(x) <= max;
+export function validateResults(raw: unknown): Result[] {
+  if (!Array.isArray(raw) || raw.length > lessons.length) throw new Error('Ungültige Ergebnisse');
+  return raw.map((r: Result) => {
+    if (!r || !lessons.some(l => l.id === r.id) || typeof r.assisted !== 'boolean' || !isCount(r.attempts, 100000))
+      throw new Error('Ungültiges Ergebnis');
+    return { id: r.id, assisted: r.assisted, attempts: r.attempts };
+  });
+}
+export function validateHistory(raw: unknown): Solve[] {
+  if (!Array.isArray(raw) || raw.length > maxHistory) throw new Error('Ungültiger Verlauf');
+  return raw.map((h: Solve) => {
+    if (!h || !lessons.some(l => l.id === h.id) || typeof h.assisted !== 'boolean' || !isDay(h.day))
+      throw new Error('Ungültiger Verlaufseintrag');
+    return { id: h.id, day: h.day, assisted: h.assisted };
+  });
 }
 export function restore(raw: string): State {
   const p = JSON.parse(raw);
   const version = p && p.version === undefined ? 1 : p?.version;
   const integer = (x: unknown, max: number) => Number.isInteger(x) && Number(x) >= 0 && Number(x) <= max;
-  if (!p || (version !== 1 && version !== storageVersion) || !integer(p.scene, version === 1 ? 4 : lastScene) || !integer(p.cursor, 3) || !integer(p.hint, 5) ||
+  if (!p || (version !== 1 && version !== 2 && version !== storageVersion) || !integer(p.scene, version === 1 ? 4 : lastScene) || !integer(p.cursor, 3) || !integer(p.hint, 5) ||
       !integer(p.attempts, 100000) || typeof p.assisted !== 'boolean' || !Array.isArray(p.results) || p.results.length > lessons.length)
     throw new Error('Ungültiger Fortschritt');
-  const results: Result[] = p.results.map((r: Result) => {
-    if (!r || !lessons.some(l => l.id === r.id) || typeof r.assisted !== 'boolean' || !integer(r.attempts, 100000))
-      throw new Error('Ungültiges Ergebnis');
-    return { id: r.id, assisted: r.assisted, attempts: r.attempts };
-  });
+  const results = validateResults(p.results);
+  const history = validateHistory(p.history ?? []);
   const scene = migrateScene(p.scene, version);
-  const s = start(scene, results);
+  const s = start(scene, results, history);
   const kind = kindOf(scene);
   const cursor = kind === 'identify' || kind === 'summary' ? 0 : p.cursor;
   return { ...s, cursor, fen: position(scene, cursor), hint: p.hint,

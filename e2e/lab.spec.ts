@@ -176,3 +176,35 @@ test('zweites Motiv: Fesselung nach der Gabel', async ({ page }) => {
   await expect(page.locator('.results li').first()).toContainText('Ohne Lösungshilfe gelöst');
   await expect(button(page, 'Nächstes Motiv')).toHaveCount(0);
 });
+
+test('Übersicht zeigt Wiederholungsstand und ermöglicht erneutes Starten', async ({ page }) => {
+  await watchScene(page); await identifyScene(page);
+  await solve(page, 'e5', 'c6', 'd8'); await button(page, 'Weiter').click();
+  await unaidedScene(page);
+  await solve(page, 'e4', 'c5', 'd7'); await button(page, 'Weiter').click();
+  const overview = page.locator('.overview');
+  await expect(overview).toContainText('An 1 Tag ohne Lösungshilfe gelöst');
+  await expect(overview).toContainText('Wiederholung ab');
+  await expect(overview).toContainText('Fesselung');
+  await expect(overview).toContainText('Noch nicht gestartet');
+  await button(page, 'Doppelangriff wiederholen').click();
+  await expect(current(page)).toContainText('Entdecken');
+  await expect(page.locator('h1')).toContainText('Ein Zug. Zwei Ziele.');
+});
+
+test('Export-Code der Lernenden erscheint in der Lehrkraft-Übersicht', async ({ page }) => {
+  await watchScene(page); await identifyScene(page);
+  await solve(page, 'e5', 'c6', 'd8'); await button(page, 'Weiter').click();
+  await page.getByText('Fortschritt für die Lehrkraft exportieren').click();
+  await page.getByLabel(/Kürzel/).fill('Fuchs-7');
+  await button(page, 'Code erzeugen').click();
+  const code = await page.locator('#code').inputValue();
+  expect(code).toMatch(/^SL1\./);
+  await page.goto('/lehrkraft/');
+  await page.locator('#codes').fill(`${code}\nkaputt`);
+  await expect(page.locator('table')).toContainText('Fuchs-7');
+  await expect(page.locator('table')).toContainText('An 1 Tag ohne Lösungshilfe gelöst');
+  await expect(page.locator('p[role="alert"]')).toContainText('Zeile 2');
+  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  expect(result.violations.map(v => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+});
