@@ -1,0 +1,47 @@
+version: '3.8'
+
+# Portainer-Stack für das Schachlabor (statische Seite hinter Traefik).
+# Deploy-Weg A (empfohlen): Portainer > Stacks > Add stack > "Repository"
+#   Repository URL: https://github.com/TJRSchmidbauer/Schachlernsoftware
+#   Reference: refs/heads/main, Compose path: portainer-stack.yml
+#   (bei privatem Repo: Authentication mit GitHub-Token aktivieren)
+# Deploy-Weg B (Web editor): funktioniert nur für öffentliche Repos über die Git-URL im build-Kontext unten.
+
+networks:
+  web:
+    external: true
+    name: web_net
+
+services:
+  schachlabor:
+    # Das Image wird beim Deploy aus dem Repo gebaut (inkl. Tests, Typecheck, Build).
+    build:
+      context: https://github.com/TJRSchmidbauer/Schachlernsoftware.git#main
+      dockerfile: Dockerfile
+    image: schachlabor:local
+    networks:
+      - web
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 100
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web_net"
+      - "traefik.http.routers.schachlabor.rule=Host(`schach.schmidbauer.jetzt`)"
+      - "traefik.http.routers.schachlabor.entrypoints=websecure"
+      - "traefik.http.routers.schachlabor.tls.certresolver=myresolver"
+      - "traefik.http.services.schachlabor.loadbalancer.server.port=8080"
