@@ -58,6 +58,7 @@ Dieser Plan ersetzt die grobe Roadmap nicht, sondern macht sie umsetzbar: Arbeit
 - 🟡 Zwischenlösung vor echter Plattform; vermeidet Datenschutzaufwand.
 
 ## Phase D – Pilot (0.2c, parallel zu C)
+**Status 11.10.2026:** Vorlage `docs/PILOT.md` (Ablauf, Beobachtungsbogen, Interviewfragen, Transferprobe, Erfolgskriterien) ✅. Durchführung wartet auf deine 🔴-Entscheidungen unten und das Next.js-Update.
 - 🔴 Hosting-Entscheidung (Traefik-Freigabe, Domain), Impressum/Datenschutzhinweis.
 - 🔴 Pilot mit 5–8 Lernenden: Beobachtungsbogen (ich erstelle Vorlage in `docs/PILOT.md`), Fragen: Verstehen sie die Hilfestufen? Transfer ohne Pfeile?
 - 🟢 Auswertung in Verbesserungs-Backlog.
